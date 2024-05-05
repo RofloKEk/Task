@@ -1,43 +1,40 @@
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
-import java.util.Scanner;
 
-public class Task4 {
-
+public class MinMovesToEqualize {
     public static void main(String[] args) {
         if (args.length != 1) {
-            System.err.println("Неверное количество аргументов. Укажите путь к файлу с числами.");
+            System.out.println("Usage: java MinMovesToEqualize <input_file>");
             return;
         }
 
-        try (Scanner scanner = new Scanner(new File(args[0]))) {
-            int[] nums = readArrayFromFile(scanner);
-            int minMoves = calculateMinMoves(nums);
-            System.out.println(minMoves);
-        } catch (FileNotFoundException e) {
-            System.err.println("Ошибка: Файл не найден: " + e.getMessage());
+        String inputFilePath = args[0];
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(new File(inputFilePath)));
+            int[] nums = reader.lines()
+                               .mapToInt(Integer::parseInt)
+                               .toArray();
+            reader.close();
+
+            Arrays.sort(nums);
+
+            int n = nums.length;
+            int median = (n % 2 == 0) ? (nums[n / 2 - 1] + nums[n / 2]) / 2 : nums[n / 2];
+
+            int totalMoves = 0;
+            for (int num : nums) {
+                totalMoves += Math.abs(num - median);
+            }
+
+            System.out.println("Минимальное количество ходов: " + totalMoves);
+
+        } catch (IOException e) {
+            System.err.println("Ошибка при чтении файла: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.err.println("Ошибка преобразования данных в целые числа: " + e.getMessage());
         }
-    }
-
-
-    private static int[] readArrayFromFile(Scanner scanner) {
-        int n = scanner.nextInt();
-        int[] nums = new int[n];
-        for (int i = 0; i < n; i++) {
-            nums[i] = scanner.nextInt();
-        }
-        return nums;
-    }
-
-
-    private static int calculateMinMoves(int[] nums) {
-        Arrays.sort(nums);
-        int median = nums[nums.length / 2];
-        int moves = 0;
-        for (int num : nums) {
-            moves += Math.abs(num - median);
-        }
-        return moves;
     }
 }
