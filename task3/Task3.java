@@ -1,93 +1,71 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+class Value {
+    public int id;
+    public String value;
+}
 
-public class Task3 {
+class Test {
+    public int id;
+    public String title;
+    public String value;
+    public List<Test> values;
+}
 
+public class ReportGenerator {
     public static void main(String[] args) {
         if (args.length != 3) {
-            System.err.println("Неверное количество аргументов. Укажите пути к трем файлам: values.json, tests.json, report.json");
+            System.out.println("Неправильное количество аргументов.");
             return;
         }
 
+        String valuesFile = args[0];
+        String testsFile = args[1];
+        String reportFile = args[2];
 
-        Map<Integer, String> valueMap = readValues(args[0]);
+        try {
+            ObjectMapper mapper = new ObjectMapper();
 
+            List<Value> valueList = mapper.readValue(
+                new File(valuesFile),
+                mapper.getTypeFactory().constructCollectionType(List.class, Value.class)
+            );
 
-        JSONObject testsJson = readJson(args[1]);
-
-
-        fillValues(testsJson, valueMap);
-
-
-        saveJson(testsJson, args[2]);
-    }
-
-
-    private static Map<Integer, String> readValues(String filePath) {
-        Map<Integer, String> valueMap = new HashMap<>();
-        try (Scanner scanner = new Scanner(new File(filePath))) {
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
-                JSONObject jsonObject = new JSONObject(line);
-                int id = jsonObject.getInt("id");
-                String value = jsonObject.getString("value");
-                valueMap.put(id, value);
+            Map<Integer, String> idToValue = new HashMap<>();
+            for (Value v : valueList) {
+                idToValue.put(v.id, v.value);
             }
-        } catch (FileNotFoundException e) {
-            System.err.println("Ошибка: Файл не найден: " + e.getMessage());
+
+            List<Test> tests = mapper.readValue(
+                new File(testsFile),
+                mapper.getTypeFactory().constructCollectionType(List.class, Test.class)
+            );
+
+            setValues(tests, idToValue);
+
+            mapper.writeValue(new File(reportFile), tests);
+
+            System.out.println("Отчет успешно сгенерирован.");
+
+        } catch (IOException e) {
+            System.err.println("Произошла ошибка: " + e.getMessage());
         }
-        return valueMap;
     }
 
-
-    private static JSONObject readJson(String filePath) {
-        StringBuilder content = new StringBuilder();
-        try (Scanner scanner = new Scanner(new File(filePath))) {
-            while (scanner.hasNextLine()) {
-                content.append(scanner.nextLine());
+    private static void setValues(List<Test> tests, Map<Integer, String> idToValue) {
+        for (Test t : tests) {
+            if (idToValue.containsKey(t.id)) {
+                t.value = idToValue.get(t.id);
             }
-        } catch (FileNotFoundException e) {
-            System.err.println("Ошибка: Файл не найден: " + e.getMessage());
-        }
-        return new JSONObject(content.toString());
-    }
 
-
-    private static void fillValues(JSONObject jsonObject, Map<Integer, String> valueMap) {
-        if (jsonObject.has("values")) {
-            JSONArray valuesArray = jsonObject.getJSONArray("values");
-            for (int i = 0; i < valuesArray.length(); i++) {
-                fillValues(valuesArray.getJSONObject(i), valueMap);
+            if (t.values != null) {
+                setValues(t.values, idToValue);
             }
-        } else {
-            int id = jsonObject.getInt("id");
-            jsonObject.put("value", valueMap.getOrDefault(id, ""));
-        }
-    }
-
-
-    private static void saveJson(JSONObject jsonObject, String filePath) {
-        try (PrintWriter writer = new PrintWriter(filePath)) {
-            writer.write(jsonObject.toString(2));
-        } catch (FileNotFoundException e) {
-            System.err.println("Ошибка: Не удалось создать файл: " + e.getMessage());
-        }
-    }
-
-
-
-    private static void writeJson(JSONObject jsonObject, String filePath) {
-        try (PrintWriter writer = new PrintWriter(filePath)) {
-            writer.write(jsonObject.toString(2));
-        } catch (FileNotFoundException e) {
-            System.err.println("Ошибка: Не удалось создать файл: " + e.getMessage());
         }
     }
 }
